@@ -424,33 +424,33 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <script>
 // ─── Security Config ──────────────────────────────────────────────────────────
 // CHANGE THESE VALUES:
-const ACCESS_PASSWORD    = 'x1arb2024!'           // your secret password
+const ACCESS_PASSWORD    = 'x1arb2024!'
 const ALLOWED_WALLETS    = [
-  '9BWUGKCZfKCk5EinWnCfmfxJSxmCwwM3tK8pAMFNrr7T', // your Backpack wallet
+  '9BWUGKCZfKCk5EinWnCfmfxJSxmCwwM3tK8pAMFNrr7T',
 ]
-const MAX_ATTEMPTS       = 5    // lockout after this many wrong passwords
-const LOCKOUT_MINUTES    = 15   // lockout duration
+const MAX_ATTEMPTS       = 5
+const LOCKOUT_MINUTES    = 15
 
 // ─── Password Gate ────────────────────────────────────────────────────────────
 let attempts = 0
 let lockedUntil = null
+let authenticated = false  // track auth state in memory, not just sessionStorage
 
 function checkPassword() {
-  // Check lockout
   if (lockedUntil && Date.now() < lockedUntil) {
     const mins = Math.ceil((lockedUntil - Date.now()) / 60000)
     $('securityError').textContent = `Too many attempts. Try again in ${mins} minute(s).`
     $('securityError').style.display = 'block'
     return
   }
-
   const input = $('passwordInput').value
   if (input === ACCESS_PASSWORD) {
-    // Correct — store session and show connect screen
+    authenticated = true
     sessionStorage.setItem('auth', btoa(ACCESS_PASSWORD + Date.now()))
     $('securityScreen').style.display = 'none'
     $('connectScreen').style.display = 'flex'
     $('passwordInput').value = ''
+    attempts = 0
   } else {
     attempts++
     const remaining = MAX_ATTEMPTS - attempts
@@ -468,13 +468,23 @@ function checkPassword() {
   }
 }
 
-// Check if already authenticated this session
 function initSecurity() {
   const auth = sessionStorage.getItem('auth')
   if (auth) {
+    authenticated = true
     $('securityScreen').style.display = 'none'
     $('connectScreen').style.display = 'flex'
   }
+}
+
+// ─── XSS sanitizer ────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;')
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -550,20 +560,31 @@ async function connectWallet() {
 function disconnectWallet() {
   try { getProvider()?.disconnect() } catch {}
   walletPubkey = null
-  $('connectScreen').style.display = 'flex'
+  authenticated = false
+  sessionStorage.removeItem('auth')  // force re-auth on next visit
   $('mainApp').style.display = 'none'
+  $('connectScreen').style.display = 'none'
+  $('securityScreen').style.display = 'flex'
+  $('passwordInput').value = ''
+  $('connectError').style.display = 'none'
 }
 
 // Auto-reconnect
 window.addEventListener('load', () => {
   initSecurity()
-  const p = getProvider()
-  if (p?.isConnected && p?.publicKey) {
-    walletPubkey = p.publicKey.toString()
-    $('connectScreen').style.display = 'none'
-    $('mainApp').style.display = 'grid'
-    $('walletAddr').textContent = fmt.addr(walletPubkey)
-    $('walletFull').textContent = walletPubkey
+  // Only auto-reconnect wallet if already authenticated
+  if (authenticated) {
+    const p = getProvider()
+    if (p?.isConnected && p?.publicKey) {
+      const pubkey = p.publicKey.toString()
+      if (!ALLOWED_WALLETS.length || ALLOWED_WALLETS.includes(pubkey)) {
+        walletPubkey = pubkey
+        $('connectScreen').style.display = 'none'
+        $('mainApp').style.display = 'grid'
+        $('walletAddr').textContent = fmt.addr(walletPubkey)
+        $('walletFull').textContent = walletPubkey
+      }
+    }
   }
   $('botUrlInput').value = botUrl
   $('secretInput').value = apiSecret
@@ -719,11 +740,11 @@ function renderSniperUI(sn) {
     $('rpAlerts').innerHTML = sn.alerts.slice(0,5).map(a => `
       <div style="padding:6px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between">
-          <span style="color:var(--orange);font-weight:700">${a.symbol||a.name||'?'}</span>
-          <span style="color:var(--green);font-size:10px">score ${a.score}</span>
+          <span style="color:var(--orange);font-weight:700">${esc(a.symbol||a.name||'?')}</span>
+          <span style="color:var(--green);font-size:10px">score ${esc(a.score)}</span>
         </div>
-        <div style="color:var(--muted);font-size:9px;margin-top:2px">${a.uniqueBuyers} buyers${a.hasVideo?' · video':''}${a.hasWebsite?' · site':''}</div>
-        <button onclick="manualSnipe('${a.mint}')" style="margin-top:4px;font-family:var(--mono);font-size:9px;padding:2px 8px;border:1px solid var(--orange);color:var(--orange);background:transparent;cursor:pointer">⚡ Snipe</button>
+        <div style="color:var(--muted);font-size:9px;margin-top:2px">${esc(a.uniqueBuyers)} buyers${a.hasVideo?' · video':''}${a.hasWebsite?' · site':''}</div>
+        <button onclick="manualSnipe('${esc(a.mint)}')" style="margin-top:4px;font-family:var(--mono);font-size:9px;padding:2px 8px;border:1px solid var(--orange);color:var(--orange);background:transparent;cursor:pointer">⚡ Snipe</button>
       </div>`).join('')
   }
 
@@ -759,12 +780,12 @@ function renderTokens() {
     <div class="token-card ${t.passesFilter?'qualified':''}">
       <div>
         <div>
-          <span style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--bright)">${t.name||t.symbol||'Unknown'}</span>
-          <span style="font-size:9px;color:var(--dim);margin-left:6px;text-transform:uppercase">${t.symbol||''}</span>
+          <span style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--bright)">${esc(t.name||t.symbol||'Unknown')}</span>
+          <span style="font-size:9px;color:var(--dim);margin-left:6px;text-transform:uppercase">${esc(t.symbol||'')}</span>
         </div>
-        <div style="font-size:9px;color:var(--muted);margin-top:2px;word-break:break-all">${t.mint||'—'}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px;word-break:break-all">${esc(t.mint||'—')}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
-          <span class="signal-chip chip-yes">👥 ${t.uniqueBuyers||0}</span>
+          <span class="signal-chip chip-yes">👥 ${esc(t.uniqueBuyers||0)}</span>
           <span class="signal-chip ${t.hasDescription?'chip-yes':'chip-no'}">${t.hasDescription?'✓':'✗'} desc</span>
           <span class="signal-chip ${t.hasWebsite?'chip-yes':'chip-no'}">${t.hasWebsite?'✓':'✗'} site</span>
           <span class="signal-chip ${t.hasVideo?'chip-yes':'chip-no'}">${t.hasVideo?'✓':'✗'} video</span>
@@ -777,9 +798,9 @@ function renderTokens() {
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-        ${t.passesFilter?`<button class="btn btn-orange" onclick="manualSnipe('${t.mint}')" style="font-size:10px;padding:5px 10px">⚡ Snipe</button>`:''}
-        ${t.website?`<a href="${t.website}" target="_blank" style="font-size:9px;color:var(--dim)">🌐</a>`:''}
-        ${t.video?`<a href="${t.video}" target="_blank" style="font-size:9px;color:var(--orange)">▶</a>`:''}
+        ${t.passesFilter?`<button class="btn btn-orange" onclick="manualSnipe('${esc(t.mint)}')" style="font-size:10px;padding:5px 10px">⚡ Snipe</button>`:''}
+        ${t.website?`<a href="${esc(t.website)}" target="_blank" rel="noopener noreferrer" style="font-size:9px;color:var(--dim)">🌐</a>`:''}
+        ${t.video?`<a href="${esc(t.video)}" target="_blank" rel="noopener noreferrer" style="font-size:9px;color:var(--orange)">▶</a>`:''}
       </div>
     </div>`).join('')
 }
@@ -829,7 +850,7 @@ async function execSwap() {
   try {
     $('swapBtn').disabled = true
     const r = await api('POST', '/swap', { tokenIn, tokenOut, amountIn })
-    if (r.dryRun) toast(`[DRY RUN] Est. out: ${r.estimatedOut?.toFixed(4)??'?'}`, 'info', 5000)
+    if (r.dryRun) toast(`[DRY RUN] Est. out: ${r.estimatedOut?.toFixed(4)??'?'}`, 'info')
     else toast(`Confirmed! ${r.sig?.slice(0,14)}…`, 'success')
   } catch(e) { toast('Swap failed: '+e.message, 'error') }
   finally { $('swapBtn').disabled = false }
@@ -879,8 +900,11 @@ async function saveSniperConfig() {
 }
 
 // ─── Poll ─────────────────────────────────────────────────────────────────────
+// Only poll when authenticated and wallet connected
+function shouldPoll() { return authenticated && walletPubkey }
+
 poll()
-setInterval(poll, 3000)
+setInterval(() => { if (shouldPoll()) poll() }, 3000)
 </script>
 </body>
 </html>
