@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X1 ARB ⚡</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#050709; --surface:#0a0e16; --card:#0e1420; --border:#162030;
+  --border2:#1e2f45; --accent:#00d4ff; --green:#00ff88; --yellow:#ffc940;
+  --red:#ff3860; --orange:#ff6b35; --muted:#2d4560; --dim:#4a6480;
+  --text:#b8cce0; --bright:#dceeff;
+  --mono:'JetBrains Mono',monospace; --display:'Syne',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:9999}
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);background-size:48px 48px;z-index:0}
+::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:var(--border2)}
+a{color:var(--accent)} code{background:rgba(0,212,255,.07);padding:1px 5px;font-family:var(--mono);font-size:10px;color:var(--accent)}
+
+/* ── LAYOUT ── */
+.app{position:relative;z-index:1;display:grid;grid-template-rows:52px 1fr;grid-template-columns:200px 1fr 270px;height:100vh}
+
+/* ── HEADER ── */
+header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(5,7,9,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(10px)}
+.logo{font-family:var(--display);font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+.logo-hex{width:26px;height:26px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#000;animation:hex-pulse 3s ease-in-out infinite}
+@keyframes hex-pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3) drop-shadow(0 0 6px var(--accent))}}
+.nav{display:flex;align-items:center;gap:20px}
+.nav-tab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);cursor:pointer;padding:4px 0;border-bottom:2px solid transparent;transition:all .2s;background:none;border:none;border-bottom:2px solid transparent;font-family:var(--mono)}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--accent);border-bottom:2px solid var(--accent)}
+.pill{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border2);font-size:10px;letter-spacing:.06em}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot-green{background:var(--green);animation:blink 1.5s infinite}
+.dot-red{background:var(--red)}
+.dot-accent{background:var(--accent)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── SIDEBAR ── */
+aside{border-right:1px solid var(--border);background:rgba(10,14,22,.85);overflow-y:auto;padding:16px 0}
+.aside-section{padding:0 14px 16px}
+.aside-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.ctrl-btn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:7px 12px;border:1px solid;cursor:pointer;background:transparent;transition:all .15s;text-align:left;width:100%;margin-bottom:6px}
+.stat-mini{margin-bottom:10px}
+.stat-label{font-size:9px;color:var(--dim);letter-spacing:.05em;margin-bottom:2px}
+.stat-val{font-size:16px;font-family:var(--display);font-weight:700}
+
+/* ── MAIN ── */
+main{overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 52px)}
+.tab-view{display:none;flex-direction:column;gap:12px}
+.tab-view.active{display:flex}
+
+/* ── RIGHT PANEL ── */
+.right-panel{border-left:1px solid var(--border);background:rgba(10,14,22,.85);overflow-y:auto;display:flex;flex-direction:column}
+.rp-section{padding:14px;border-bottom:1px solid var(--border)}
+.rp-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+
+/* ── PANELS ── */
+.panel{background:var(--card);border:1px solid var(--border)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.panel-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.panel-body{padding:12px 14px}
+.scan-track{height:2px;background:var(--border);overflow:hidden}
+.scan-track.active::after{content:'';display:block;height:100%;width:50%;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scan 1.8s linear infinite}
+@keyframes scan{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+
+/* ── INPUTS / BUTTONS ── */
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 16px;border:1px solid;cursor:pointer;background:transparent;transition:all .15s}
+.btn-primary{border-color:var(--accent);color:var(--accent)}
+.btn-primary:hover{background:rgba(0,212,255,.08)}
+.btn-filled{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn-filled:hover{filter:brightness(1.1)}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(255,56,96,.08)}
+.btn-orange{border-color:var(--orange);color:var(--orange)}
+.btn-orange:hover{background:rgba(255,107,53,.08)}
+.btn-green{border-color:var(--green);color:var(--green)}
+.btn-green:hover{background:rgba(0,255,136,.08)}
+.btn-yellow{border-color:var(--yellow);color:var(--yellow)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.input{background:var(--surface);border:1px solid var(--border2);color:var(--bright);font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none;width:100%;transition:border-color .15s}
+.input:focus{border-color:var(--accent)}
+.input::placeholder{color:var(--muted)}
+
+/* ── STATS GRID ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat-card{background:var(--card);border:1px solid var(--border);padding:12px 14px;border-top:2px solid}
+.stat-card-label{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.stat-card-val{font-family:var(--display);font-size:20px;font-weight:800}
+
+/* ── OPP CARDS ── */
+.opp-card{background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.1);padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;animation:slide-in .3s ease}
+@keyframes slide-in{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.type-badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border:1px solid;display:inline-block;margin-bottom:4px}
+.opp-pct{font-family:var(--display);font-size:18px;font-weight:700;color:var(--green)}
+.exec-btn{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border:1px solid rgba(0,212,255,.4);color:var(--accent);background:transparent;cursor:pointer;margin-top:4px}
+.exec-btn:hover{background:rgba(0,212,255,.08)}
+
+/* ── LOG ── */
+.log-stream{font-size:10px;line-height:1.8;max-height:180px;overflow-y:auto}
+.log-line{display:flex;gap:8px}
+.log-ts{color:var(--muted);white-space:nowrap}
+.log-lvl{width:44px;flex-shrink:0}
+.log-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+
+/* ── SWAP ── */
+.token-box{background:var(--surface);border:1px solid var(--border2);padding:10px 12px;margin-bottom:8px}
+.tok-label{font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.quote-box{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.12);padding:10px 12px;font-size:11px;line-height:2;margin-bottom:8px}
+.quote-row{display:flex;justify-content:space-between}
+
+/* ── SNIPER ── */
+.token-card{background:var(--card);border:1px solid var(--border);padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:8px}
+.token-card.qualified{border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.04)}
+.signal-chip{font-size:9px;padding:2px 6px;border:1px solid;letter-spacing:.06em;text-transform:uppercase}
+.chip-yes{border-color:rgba(0,255,136,.35);color:var(--green)}
+.chip-no{border-color:rgba(255,56,96,.2);color:var(--red);opacity:.5}
+.score-track{height:3px;background:var(--border);margin-top:6px}
+.score-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));transition:width .4s}
+
+/* ── TRADE HISTORY ── */
+.trade-row{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px;align-items:center}
+.trade-row:last-child{border:none}
+
+/* ── SETTINGS ── */
+.setting-group{margin-bottom:14px}
+.setting-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.setting-row{display:flex;align-items:center;gap:8px}
+.setting-unit{font-size:10px;color:var(--dim);width:32px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+
+/* ── CONNECT SCREEN ── */
+.connect-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:100;flex-direction:column;gap:24px}
+.connect-box{background:var(--card);border:1px solid var(--border2);padding:32px 36px;max-width:400px;width:100%;text-align:center}
+.connect-error{background:rgba(255,56,96,.08);border:1px solid rgba(255,56,96,.3);color:var(--red);font-size:11px;padding:8px 12px;margin-bottom:16px}
+.rpc-hint{background:rgba(255,201,64,.04);border:1px solid rgba(255,201,64,.15);padding:10px 14px;font-size:10px;color:var(--yellow);line-height:1.7;max-width:400px;width:100%;text-align:left}
+
+/* ── BOT OFFLINE BANNER ── */
+.offline-banner{background:rgba(255,56,96,.08);border:1px solid rgba(255,56,96,.25);color:var(--red);font-size:11px;padding:8px 14px;text-align:center;display:none}
+.offline-banner.show{display:block}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:10px 14px;font-size:11px;border:1px solid;animation:slide-in .2s ease;max-width:320px}
+.toast-success{border-color:var(--green);background:rgba(0,255,136,.08);color:var(--green)}
+.toast-error{border-color:var(--red);background:rgba(255,56,96,.08);color:var(--red)}
+.toast-info{border-color:var(--accent);background:rgba(0,212,255,.08);color:var(--accent)}
+
+/* ── EMPTY STATE ── */
+.empty{padding:24px;text-align:center;color:var(--muted);font-size:11px}
+.empty-ico{font-size:24px;opacity:.4;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<!-- ── CONNECT SCREEN ── -->
+<div class="connect-screen" id="connectScreen">
+  <div style="position:relative;z-index:1;width:100%;display:flex;flex-direction:column;align-items:center;gap:16px">
+    <div class="logo" style="justify-content:center;margin-bottom:16px">
+      <div class="logo-hex">X1</div>
+      <span style="color:var(--bright)">X1 <span style="color:var(--accent)">ARB</span> <span style="color:var(--orange)">⚡</span></span>
+    </div>
+
+    <div class="connect-box">
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px;line-height:1.6">Connect your Backpack wallet to access the trading dashboard.</div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:24px;line-height:1.7">Your private key never leaves your wallet. All transactions are signed locally by Backpack.</div>
+      <div class="connect-error" id="connectError" style="display:none"></div>
+      <button class="btn btn-filled" id="connectBtn" onclick="connectWallet()" style="width:100%;padding:12px;font-size:12px">🎒 Connect Backpack</button>
+      <div style="margin-top:14px;font-size:10px;color:var(--muted)">Don't have Backpack? <a href="https://backpack.app" target="_blank">backpack.app</a></div>
+    </div>
+
+    <div class="rpc-hint">
+      <strong>Set X1 RPC in Backpack first:</strong><br>
+      Settings → Solana → RPC Connection → Custom →<br>
+      <code style="color:var(--yellow);background:rgba(255,201,64,.1)">https://rpc.mainnet.x1.xyz</code>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div class="app" id="mainApp" style="display:none">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-hex">X1</div>
+      <span style="color:var(--bright)">X1 <span style="color:var(--accent)">ARB</span> <span style="color:var(--orange)">⚡</span></span>
+    </div>
+    <div class="nav">
+      <button class="nav-tab active" onclick="switchTab('arb',this)">Arb Monitor</button>
+      <button class="nav-tab" onclick="switchTab('sniper',this)" style="color:var(--orange)">⚡ Sniper</button>
+      <button class="nav-tab" onclick="switchTab('trade',this)">Manual Trade</button>
+      <button class="nav-tab" onclick="switchTab('history',this)">History</button>
+      <button class="nav-tab" onclick="switchTab('settings',this)">Settings</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="pill"><div class="dot" id="botDot"></div><span id="botStatusTxt">CONNECTING</span></div>
+      <div class="pill"><div class="dot dot-accent"></div><span id="walletAddr" style="color:var(--accent)">—</span></div>
+      <button class="btn btn-danger" onclick="disconnectWallet()" style="font-size:10px;padding:4px 10px">Disconnect</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="aside-section">
+      <div class="aside-label">Bot Controls</div>
+      <button class="ctrl-btn btn-green" onclick="botAction('start')">▶ Start / Resume</button>
+      <button class="ctrl-btn btn-yellow" onclick="botAction('pause')">⏸ Pause Arb</button>
+      <button class="ctrl-btn btn-danger" onclick="botAction('stop')">■ Stop Bot</button>
+    </div>
+    <div class="aside-section">
+      <div class="aside-label" style="color:var(--orange)">Sniper Controls</div>
+      <button class="ctrl-btn btn-orange" onclick="sniperAction('start')">⚡ Start Sniper</button>
+      <button class="ctrl-btn btn-danger" onclick="sniperAction('stop')">■ Stop Sniper</button>
+    </div>
+    <div class="aside-section">
+      <div class="aside-label">Session Stats</div>
+      <div class="stat-mini"><div class="stat-label">Scans</div><div class="stat-val" id="sScans" style="color:var(--accent)">0</div></div>
+      <div class="stat-mini"><div class="stat-label">Opportunities</div><div class="stat-val" id="sOpps" style="color:var(--green)">0</div></div>
+      <div class="stat-mini"><div class="stat-label">Trades</div><div class="stat-val" id="sTrades" style="color:var(--bright)">0</div></div>
+      <div class="stat-mini"><div class="stat-label">Est. Profit</div><div class="stat-val" id="sProfit" style="color:var(--green)">0 XNT</div></div>
+    </div>
+    <div class="aside-section">
+      <div class="aside-label" style="color:var(--orange)">Sniper Stats</div>
+      <div class="stat-mini"><div class="stat-label">Scanned</div><div class="stat-val" id="snScanned" style="color:var(--orange)">0</div></div>
+      <div class="stat-mini"><div class="stat-label">Qualified</div><div class="stat-val" id="snQualified" style="color:var(--green)">0</div></div>
+      <div class="stat-mini"><div class="stat-label">Sniped</div><div class="stat-val" id="snSniped" style="color:var(--accent)">0</div></div>
+    </div>
+    <div class="aside-section">
+      <div class="aside-label">Wallet</div>
+      <div style="font-size:9px;color:var(--dim);word-break:break-all;line-height:1.5" id="walletFull">—</div>
+      <div id="dryRunBadge" style="display:none;margin-top:8px;font-size:9px;color:var(--yellow);border:1px solid var(--yellow);padding:3px 6px;display:inline-block">DRY RUN</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="offline-banner" id="offlineBanner">
+      ⚠ Bot offline — enter your bot server URL in <strong>Settings</strong> tab, then run <code>node arb-bot.js --dry-run</code> on your server.
+    </div>
+
+    <!-- ARB TAB -->
+    <div class="tab-view active" id="tab-arb">
+      <div class="stats-grid">
+        <div class="stat-card" style="border-top-color:var(--accent)"><div class="stat-card-label">Scans</div><div class="stat-card-val" id="scScans" style="color:var(--accent)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--green)"><div class="stat-card-label">Opportunities</div><div class="stat-card-val" id="scOpps" style="color:var(--green)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--bright)"><div class="stat-card-label">Trades</div><div class="stat-card-val" id="scTrades" style="color:var(--bright)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--green)"><div class="stat-card-label">Est. Profit</div><div class="stat-card-val" id="scProfit" style="color:var(--green)">0</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Live Opportunities</div><span id="oppCount" style="font-size:10px;color:var(--dim)">0 found</span></div>
+        <div class="scan-track" id="scanTrack"></div>
+        <div class="panel-body" id="oppList"><div class="empty"><div class="empty-ico">⬡</div>Scanning pools…</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Activity Log</div></div>
+        <div class="panel-body"><div class="log-stream" id="logStream"><div class="empty" style="padding:8px 0">Connecting…</div></div></div>
+      </div>
+    </div>
+
+    <!-- SNIPER TAB -->
+    <div class="tab-view" id="tab-sniper">
+      <div class="stats-grid">
+        <div class="stat-card" style="border-top-color:var(--orange)"><div class="stat-card-label">Scanned</div><div class="stat-card-val" id="snScannedBig" style="color:var(--orange)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--green)"><div class="stat-card-label">Qualified</div><div class="stat-card-val" id="snQualifiedBig" style="color:var(--green)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--accent)"><div class="stat-card-label">Sniped ✓</div><div class="stat-card-val" id="snSnipedBig" style="color:var(--accent)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--red)"><div class="stat-card-label">Failed</div><div class="stat-card-val" id="snFailedBig" style="color:var(--red)">0</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" style="color:var(--orange)">⚡ degen.fyi Token Feed</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);cursor:pointer">
+            <input type="checkbox" id="filterQualified" onchange="renderTokens()"> Qualified only
+          </label>
+        </div>
+        <div class="scan-track" id="sniperScanTrack"></div>
+        <div class="panel-body" style="max-height:420px;overflow-y:auto" id="tokenList">
+          <div class="empty"><div class="empty-ico">⚡</div>Waiting for first scan…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRADE TAB -->
+    <div class="tab-view" id="tab-trade">
+      <div class="panel" style="max-width:520px">
+        <div class="panel-header"><div class="panel-title">Manual Swap — XDEX</div></div>
+        <div class="panel-body">
+          <div class="token-box"><div class="tok-label">From — Token Address</div><input class="input" id="swapIn" placeholder="Token mint address…"></div>
+          <div class="token-box"><div class="tok-label">Amount</div><input class="input" id="swapAmt" type="number" placeholder="0.00" style="font-size:18px"></div>
+          <button onclick="flipSwap()" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border2);color:var(--dim);cursor:pointer;font-family:var(--mono);font-size:11px;margin-bottom:8px">⇅ flip</button>
+          <div class="token-box"><div class="tok-label">To — Token Address</div><input class="input" id="swapOut" placeholder="Token mint address…"></div>
+          <div class="quote-box" id="quoteBox" style="display:none">
+            <div class="quote-row"><span style="color:var(--dim)">Estimated out</span><span id="qOut" style="color:var(--bright)">—</span></div>
+            <div class="quote-row"><span style="color:var(--dim)">Rate</span><span id="qRate" style="color:var(--text)">—</span></div>
+            <div class="quote-row"><span style="color:var(--dim)">Fee</span><span style="color:var(--yellow)">0.28% XDEX</span></div>
+          </div>
+          <button class="btn btn-primary" onclick="getQuote()" id="quoteBtn" style="width:100%;padding:10px;margin-bottom:8px">Get Quote</button>
+          <button class="btn btn-filled" onclick="execSwap()" id="swapBtn" disabled style="width:100%;padding:10px">Execute Swap</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div class="tab-view" id="tab-history">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Trade Summary</div><span id="histSummary" style="font-size:10px;color:var(--dim)"></span></div>
+        <div class="panel-body"><div style="font-family:var(--display);font-size:20px;font-weight:800;color:var(--green)" id="histProfit">0.0000 XNT</div><div style="font-size:10px;color:var(--dim);margin-top:2px">estimated total profit</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Arb Trades</div></div>
+        <div class="panel-body" id="histList"><div class="empty" style="padding:10px 0">No trades yet</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Snipe History</div></div>
+        <div class="panel-body" id="snipeHistList"><div class="empty" style="padding:10px 0">No snipes yet</div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-view" id="tab-settings">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Bot Server URL</div><span id="serverStatus" style="font-size:10px;color:var(--red)">● OFFLINE</span></div>
+        <div class="panel-body">
+          <div style="font-size:11px;color:var(--dim);margin-bottom:8px;line-height:1.6">Your bot server address. Use your VPS IP, ngrok URL, or localhost:</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input class="input" id="botUrlInput" placeholder="http://your-vps-ip:3001">
+            <button class="btn btn-primary" onclick="saveBotUrl()">Save</button>
+          </div>
+          <div style="font-size:10px;color:var(--dim);line-height:1.7">
+            No server yet? Run the bot on your PC with: <code>node arb-bot.js --dry-run</code><br>
+            Then use <a href="https://ngrok.com" target="_blank">ngrok</a> to expose it: <code>ngrok http 3001</code>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">API Secret (optional)</div></div>
+        <div class="panel-body">
+          <div style="font-size:11px;color:var(--dim);margin-bottom:8px">Only needed if you started the bot with <code>API_SECRET=xxx node arb-bot.js</code></div>
+          <div style="display:flex;gap:8px">
+            <input class="input" id="secretInput" type="password" placeholder="Leave blank if not set">
+            <button class="btn btn-primary" onclick="saveSecret()">Save</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Arb Bot Config</div></div>
+        <div class="panel-body">
+          <div class="setting-group"><div class="setting-label">Min Profit %</div><div class="setting-row"><input class="input" id="cfgMinProfit" type="number" step="0.1" style="max-width:140px"><span class="setting-unit">%</span></div></div>
+          <div class="setting-group"><div class="setting-label">Max Trade Size</div><div class="setting-row"><input class="input" id="cfgMaxTrade" type="number" step="0.1" style="max-width:140px"><span class="setting-unit">XNT</span></div></div>
+          <div class="setting-group"><div class="setting-label">Scan Interval</div><div class="setting-row"><input class="input" id="cfgInterval" type="number" step="500" style="max-width:140px"><span class="setting-unit">ms</span></div></div>
+          <div class="toggle-row"><span style="font-size:11px;color:var(--text)">Dry Run Mode</span><input type="checkbox" id="cfgDryRun"></div>
+          <button class="btn btn-primary" onclick="saveArbConfig()" style="width:100%;padding:9px">Save Arb Settings</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Sniper Config</div></div>
+        <div class="panel-body">
+          <div class="setting-group"><div class="setting-label">Min Unique Buyers</div><div class="setting-row"><input class="input" id="snCfgBuyers" type="number" value="3" style="max-width:140px"></div></div>
+          <div class="setting-group"><div class="setting-label">Min Quality Score</div><div class="setting-row"><input class="input" id="snCfgScore" type="number" value="60" style="max-width:140px"><span class="setting-unit">/100</span></div></div>
+          <div class="setting-group"><div class="setting-label">Snipe Amount</div><div class="setting-row"><input class="input" id="snCfgAmount" type="number" value="5" step="0.1" style="max-width:140px"><span class="setting-unit">XNT</span></div></div>
+          <div class="toggle-row"><span style="font-size:11px;color:var(--text)">Auto-Snipe</span><input type="checkbox" id="snCfgAuto"></div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6">Keep auto-snipe off until you're comfortable with the filters.</div>
+          <button class="btn btn-primary" onclick="saveSniperConfig()" style="width:100%;padding:9px">Save Sniper Settings</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="rp-section">
+      <div class="rp-title" style="color:var(--orange)">⚡ Sniper Alerts</div>
+      <div id="rpAlerts" style="font-size:10px;color:var(--muted)">No alerts yet…</div>
+    </div>
+    <div class="rp-section" style="flex:1">
+      <div class="rp-title">Recent Trades</div>
+      <div id="rpTrades" style="font-size:10px;color:var(--muted)">No trades yet</div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let walletPubkey  = null
+let botUrl        = localStorage.getItem('botUrl') || 'http://localhost:3001'
+let apiSecret     = localStorage.getItem('botSecret') || ''
+let botStatus     = null
+let sniperTokens  = []
+let configLoaded  = false
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id)
+const fmt = {
+  addr: a  => a ? `${a.slice(0,6)}…${a.slice(-4)}` : '—',
+  xnt:  n  => `${Number(n).toFixed(4)} XNT`,
+  pct:  n  => `+${Number(n).toFixed(2)}%`,
+  ts:   ts => new Date(ts).toLocaleTimeString(),
+}
+
+function toast(msg, type='info') {
+  const w = $('toastWrap')
+  const el = document.createElement('div')
+  el.className = `toast toast-${type}`
+  el.textContent = msg
+  w.appendChild(el)
+  setTimeout(() => el.remove(), 3500)
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type':'application/json', 'X-Api-Secret': apiSecret } }
+  if (body) opts.body = JSON.stringify(body)
+  const r = await fetch(botUrl + path, opts)
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || r.status) }
+  return r.json()
+}
+
+// ─── Wallet ───────────────────────────────────────────────────────────────────
+function getProvider() {
+  return window?.backpack?.solana || window?.xnft?.solana || window?.solana
+}
+
+async function connectWallet() {
+  const btn = $('connectBtn')
+  btn.textContent = 'Connecting…'
+  btn.disabled = true
+  try {
+    const provider = getProvider()
+    if (!provider) throw new Error('Backpack not found — install it from backpack.app')
+    const resp = await provider.connect()
+    walletPubkey = resp.publicKey?.toString() || provider.publicKey?.toString()
+    if (!walletPubkey) throw new Error('Could not get public key')
+    $('connectScreen').style.display = 'none'
+    $('mainApp').style.display = 'grid'
+    $('walletAddr').textContent  = fmt.addr(walletPubkey)
+    $('walletFull').textContent  = walletPubkey
+  } catch(e) {
+    const err = $('connectError')
+    err.textContent = e.message
+    err.style.display = 'block'
+    btn.textContent = '🎒 Connect Backpack'
+    btn.disabled = false
+  }
+}
+
+function disconnectWallet() {
+  try { getProvider()?.disconnect() } catch {}
+  walletPubkey = null
+  $('connectScreen').style.display = 'flex'
+  $('mainApp').style.display = 'none'
+}
+
+// Auto-reconnect
+window.addEventListener('load', () => {
+  const p = getProvider()
+  if (p?.isConnected && p?.publicKey) {
+    walletPubkey = p.publicKey.toString()
+    $('connectScreen').style.display = 'none'
+    $('mainApp').style.display = 'grid'
+    $('walletAddr').textContent = fmt.addr(walletPubkey)
+    $('walletFull').textContent = walletPubkey
+  }
+  $('botUrlInput').value = botUrl
+  $('secretInput').value = apiSecret
+})
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'))
+  el.classList.add('active')
+  $(`tab-${name}`).classList.add('active')
+}
+
+// ─── Bot API ──────────────────────────────────────────────────────────────────
+async function poll() {
+  try {
+    const s = await api('GET', '/status')
+    botStatus = s
+    updateUI(s)
+    $('offlineBanner').classList.remove('show')
+    $('botDot').className  = 'dot dot-green'
+    $('botStatusTxt').textContent = s.paused ? 'PAUSED' : 'RUNNING'
+    $('serverStatus').textContent = '● ONLINE'
+    $('serverStatus').style.color = 'var(--green)'
+  } catch {
+    $('offlineBanner').classList.add('show')
+    $('botDot').className  = 'dot dot-red'
+    $('botStatusTxt').textContent = 'OFFLINE'
+    $('serverStatus').textContent = '● OFFLINE'
+    $('serverStatus').style.color = 'var(--red)'
+  }
+}
+
+function updateUI(s) {
+  const st = s.stats || {}
+  // Sidebar + stat cards
+  $('sScans').textContent   = $('scScans').textContent  = st.scans   || 0
+  $('sOpps').textContent    = $('scOpps').textContent   = st.opportunities || 0
+  $('sTrades').textContent  = $('scTrades').textContent = st.tradesExecuted || 0
+  const profit = fmt.xnt(st.totalProfit || 0)
+  $('sProfit').textContent  = $('scProfit').textContent = profit
+
+  // Dry run
+  $('dryRunBadge').style.display = s.config?.dryRun ? 'inline-block' : 'none'
+
+  // Opportunities
+  renderOpps(s.opportunities || [])
+
+  // Log
+  renderLog(s.recentLogs || [])
+
+  // History
+  renderHistory(s.tradeHistory || [], s.tradeSummary)
+
+  // Sniper
+  if (s.sniper) renderSniperUI(s.sniper)
+
+  // Right panel trades
+  renderRpTrades(s.tradeHistory || [])
+
+  // Populate config once
+  if (s.config && !configLoaded) {
+    $('cfgMinProfit').value = s.config.minProfitPct || 0.5
+    $('cfgMaxTrade').value  = s.config.maxTradeSize || 10
+    $('cfgInterval').value  = s.config.intervalMs   || 5000
+    $('cfgDryRun').checked  = s.config.dryRun ?? true
+    configLoaded = true
+  }
+}
+
+function renderOpps(opps) {
+  $('oppCount').textContent = `${opps.length} found`
+  const track = $('scanTrack')
+  if (opps.length) track.classList.add('active')
+  else setTimeout(() => track.classList.remove('active'), 2000)
+
+  if (!opps.length) {
+    $('oppList').innerHTML = '<div class="empty"><div class="empty-ico">⬡</div>Scanning pools…</div>'
+    return
+  }
+  $('oppList').innerHTML = opps.map(o => `
+    <div class="opp-card">
+      <div>
+        <span class="type-badge" style="border-color:${o.type==='triangular'?'var(--accent)':'var(--green)'};color:${o.type==='triangular'?'var(--accent)':'var(--green)'}">
+          ${o.type==='triangular'?'△':'⇄'} ${o.type}
+        </span>
+        <div style="font-size:10px;color:var(--dim)">
+          ${o.type==='triangular' ? (o.path||[]).map(fmt.addr).join(' → ') : `${fmt.addr(o.tokenA)} ↔ ${fmt.addr(o.tokenB)}`}
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">In: ${o.amountIn} XNT · ${fmt.ts(o.timestamp)}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="opp-pct">${fmt.pct(o.profitPct)}</div>
+        <button class="exec-btn" onclick="execOpp('${o.id}')">Execute ▶</button>
+      </div>
+    </div>`).join('')
+}
+
+function renderLog(logs) {
+  if (!logs.length) return
+  $('logStream').innerHTML = [...logs].reverse().slice(0,40).map(e => `
+    <div class="log-line">
+      <span class="log-ts">${(e.ts||'').slice(11,19)}</span>
+      <span class="log-lvl" style="color:${e.level==='PROFIT'?'var(--green)':e.level==='TRADE'?'var(--accent)':e.level==='ERROR'?'var(--red)':e.level==='WARN'?'var(--yellow)':'var(--dim)'};font-weight:${e.level==='PROFIT'?700:400}">${e.level}</span>
+      <span class="log-msg">${e.msg}${e.data?' '+JSON.stringify(e.data).slice(0,60):''}</span>
+    </div>`).join('')
+}
+
+function renderHistory(trades, summary) {
+  if (summary) {
+    $('histSummary').textContent = `Wins: ${summary.wins||0} · Fails: ${summary.fails||0}`
+    $('histProfit').textContent  = fmt.xnt(summary.totalProfit||0)
+  }
+  if (!trades.length) { $('histList').innerHTML = '<div class="empty" style="padding:10px 0">No trades yet</div>'; return }
+  $('histList').innerHTML = trades.map(t => `
+    <div class="trade-row">
+      <div style="width:6px;height:6px;border-radius:50%;background:${t.status==='success'?'var(--green)':'var(--red)'};flex-shrink:0"></div>
+      <div style="color:var(--dim);width:70px">${t.type||'trade'}</div>
+      <div style="flex:1;color:var(--text)">${t.dryRun?'<span style="color:var(--muted)">[dry] </span>':''}${fmt.ts(t.executedAt||t.timestamp)}</div>
+      <div style="color:${t.status==='success'?'var(--green)':'var(--red)'}">
+        ${t.status==='success'?`+${(t.estimatedProfit||0).toFixed(4)}`:'✗'}
+      </div>
+    </div>`).join('')
+}
+
+function renderRpTrades(trades) {
+  if (!trades.length) { $('rpTrades').textContent = 'No trades yet'; return }
+  $('rpTrades').innerHTML = trades.slice(0,8).map(t => `
+    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--dim)">${fmt.ts(t.executedAt||t.timestamp)}</span>
+      <span style="color:${t.status==='success'?'var(--green)':'var(--red)'}">${t.status==='success'?'✓':'✗'} ${t.type}</span>
+    </div>`).join('')
+}
+
+// ─── Sniper UI ────────────────────────────────────────────────────────────────
+function renderSniperUI(sn) {
+  const st = sn.stats || {}
+  $('snScanned').textContent = $('snScannedBig').textContent  = st.tokensScanned   || 0
+  $('snQualified').textContent = $('snQualifiedBig').textContent = st.tokensQualified || 0
+  $('snSniped').textContent  = $('snSnipedBig').textContent   = st.snipesSuccess   || 0
+  $('snFailedBig').textContent = st.snipesFailed || 0
+
+  if (sn.running) $('sniperScanTrack').classList.add('active')
+  else $('sniperScanTrack').classList.remove('active')
+
+  if (sn.allScanned?.length) {
+    sniperTokens = sn.allScanned
+    renderTokens()
+  }
+
+  // Alerts
+  if (sn.alerts?.length) {
+    $('rpAlerts').innerHTML = sn.alerts.slice(0,5).map(a => `
+      <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--orange);font-weight:700">${a.symbol||a.name||'?'}</span>
+          <span style="color:var(--green);font-size:10px">score ${a.score}</span>
+        </div>
+        <div style="color:var(--muted);font-size:9px;margin-top:2px">${a.uniqueBuyers} buyers${a.hasVideo?' · video':''}${a.hasWebsite?' · site':''}</div>
+        <button onclick="manualSnipe('${a.mint}')" style="margin-top:4px;font-family:var(--mono);font-size:9px;padding:2px 8px;border:1px solid var(--orange);color:var(--orange);background:transparent;cursor:pointer">⚡ Snipe</button>
+      </div>`).join('')
+  }
+
+  // Snipe history
+  if (sn.sniped?.length) {
+    $('snipeHistList').innerHTML = sn.sniped.map(s => `
+      <div class="trade-row">
+        <div style="width:6px;height:6px;border-radius:50%;background:${s.status==='success'?'var(--green)':'var(--red)'};flex-shrink:0"></div>
+        <div style="color:var(--orange);width:44px">snipe</div>
+        <div style="flex:1;color:var(--text)">${s.symbol||s.mint?.slice(0,10)||'?'}${s.dryRun?' <span style="color:var(--muted)">[dry]</span>':''}</div>
+        <div style="color:${s.status==='success'?'var(--green)':'var(--red)'};font-size:10px">${s.status==='success'?`${s.amountIn} XNT`:'✗ '+(s.error||'').slice(0,20)}</div>
+      </div>`).join('')
+  }
+
+  // Populate sniper config once
+  if (sn.config && !$('snCfgBuyers').dataset.loaded) {
+    $('snCfgBuyers').value = sn.config.minUniqueBuyers || 3
+    $('snCfgScore').value  = sn.config.minQualityScore || 60
+    $('snCfgAmount').value = sn.config.snipeAmountXnt  || 5
+    $('snCfgAuto').checked = sn.config.autoSnipe || false
+    $('snCfgBuyers').dataset.loaded = '1'
+  }
+}
+
+function renderTokens() {
+  const qualified = $('filterQualified')?.checked
+  const list = qualified ? sniperTokens.filter(t => t.passesFilter) : sniperTokens
+  if (!list.length) {
+    $('tokenList').innerHTML = `<div class="empty"><div class="empty-ico">⚡</div>${qualified?'No qualified tokens yet':'Scanning degen.fyi…'}</div>`
+    return
+  }
+  $('tokenList').innerHTML = list.map(t => `
+    <div class="token-card ${t.passesFilter?'qualified':''}">
+      <div>
+        <div>
+          <span style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--bright)">${t.name||t.symbol||'Unknown'}</span>
+          <span style="font-size:9px;color:var(--dim);margin-left:6px;text-transform:uppercase">${t.symbol||''}</span>
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px;word-break:break-all">${t.mint||'—'}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
+          <span class="signal-chip chip-yes">👥 ${t.uniqueBuyers||0}</span>
+          <span class="signal-chip ${t.hasDescription?'chip-yes':'chip-no'}">${t.hasDescription?'✓':'✗'} desc</span>
+          <span class="signal-chip ${t.hasWebsite?'chip-yes':'chip-no'}">${t.hasWebsite?'✓':'✗'} site</span>
+          <span class="signal-chip ${t.hasVideo?'chip-yes':'chip-no'}">${t.hasVideo?'✓':'✗'} video</span>
+          ${t.passesFilter?'<span class="signal-chip chip-yes">★ QUALIFIED</span>':''}
+        </div>
+        <div class="score-track"><div class="score-fill" style="width:${t.score||0}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px">
+          <span>Score: ${t.score||0}/100</span>
+          <span>${t.scannedAt?fmt.ts(t.scannedAt):''}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        ${t.passesFilter?`<button class="btn btn-orange" onclick="manualSnipe('${t.mint}')" style="font-size:10px;padding:5px 10px">⚡ Snipe</button>`:''}
+        ${t.website?`<a href="${t.website}" target="_blank" style="font-size:9px;color:var(--dim)">🌐</a>`:''}
+        ${t.video?`<a href="${t.video}" target="_blank" style="font-size:9px;color:var(--orange)">▶</a>`:''}
+      </div>
+    </div>`).join('')
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+async function botAction(action) {
+  try { await api('POST', `/bot/${action}`); toast(`Bot ${action}ed`, 'success') }
+  catch(e) { toast(e.message, 'error') }
+}
+
+async function sniperAction(action) {
+  try { await api('POST', `/sniper/${action}`); toast(`Sniper ${action}ed`, 'success') }
+  catch(e) { toast(e.message, 'error') }
+}
+
+async function execOpp(id) {
+  try { await api('POST', '/arb/execute', { id }); toast('Executed!', 'success') }
+  catch(e) { toast(e.message, 'error') }
+}
+
+async function manualSnipe(mint) {
+  if (!confirm(`Snipe ${mint.slice(0,12)}…?`)) return
+  try {
+    const r = await api('POST', '/sniper/snipe', { mint })
+    if (r.dryRun) toast('[DRY RUN] Simulated', 'info')
+    else toast(`Sniped! ${r.sig?.slice(0,14)||'✓'}`, 'success')
+  } catch(e) { toast('Snipe failed: '+e.message, 'error') }
+}
+
+async function getQuote() {
+  const tokenIn = $('swapIn').value.trim(), tokenOut = $('swapOut').value.trim(), amount = $('swapAmt').value
+  if (!tokenIn||!tokenOut||!amount) { toast('Fill all fields', 'error'); return }
+  try {
+    const r = await api('GET', `/quote?token_in=${tokenIn}&token_out=${tokenOut}&amount=${amount}`)
+    const out = r.quote?.amount_out ?? r.quote?.outAmount ?? r.quote?.data?.amount_out ?? '?'
+    $('qOut').textContent  = parseFloat(out).toFixed(6)
+    $('qRate').textContent = `1 → ${(parseFloat(out)/parseFloat(amount)).toFixed(6)}`
+    $('quoteBox').style.display = 'block'
+    $('swapBtn').disabled = false
+    toast('Quote ready', 'success')
+  } catch(e) { toast('Quote failed: '+e.message, 'error') }
+}
+
+async function execSwap() {
+  const tokenIn = $('swapIn').value.trim(), tokenOut = $('swapOut').value.trim(), amountIn = parseFloat($('swapAmt').value)
+  if (!confirm(`Swap ${amountIn} → proceed?`)) return
+  try {
+    $('swapBtn').disabled = true
+    const r = await api('POST', '/swap', { tokenIn, tokenOut, amountIn })
+    if (r.dryRun) toast(`[DRY RUN] Est. out: ${r.estimatedOut?.toFixed(4)??'?'}`, 'info', 5000)
+    else toast(`Confirmed! ${r.sig?.slice(0,14)}…`, 'success')
+  } catch(e) { toast('Swap failed: '+e.message, 'error') }
+  finally { $('swapBtn').disabled = false }
+}
+
+function flipSwap() {
+  const a = $('swapIn').value, b = $('swapOut').value
+  $('swapIn').value = b; $('swapOut').value = a
+  $('swapBtn').disabled = true; $('quoteBox').style.display = 'none'
+}
+
+function saveBotUrl() {
+  botUrl = $('botUrlInput').value.trim()
+  localStorage.setItem('botUrl', botUrl)
+  toast('Bot URL saved — reconnecting…', 'info')
+  poll()
+}
+
+function saveSecret() {
+  apiSecret = $('secretInput').value
+  localStorage.setItem('botSecret', apiSecret)
+  toast('Secret saved', 'success')
+}
+
+async function saveArbConfig() {
+  try {
+    await api('POST', '/bot/config', {
+      minProfitPct: parseFloat($('cfgMinProfit').value),
+      maxTradeSize: parseFloat($('cfgMaxTrade').value),
+      intervalMs:   parseInt($('cfgInterval').value),
+      dryRun:       $('cfgDryRun').checked,
+    })
+    toast('Arb config saved', 'success')
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function saveSniperConfig() {
+  try {
+    await api('POST', '/sniper/config', {
+      minUniqueBuyers: parseInt($('snCfgBuyers').value),
+      minQualityScore: parseInt($('snCfgScore').value),
+      snipeAmountXnt:  parseFloat($('snCfgAmount').value),
+      autoSnipe:       $('snCfgAuto').checked,
+    })
+    toast('Sniper config saved', 'success')
+  } catch(e) { toast(e.message, 'error') }
+}
+
+// ─── Poll ─────────────────────────────────────────────────────────────────────
+poll()
+setInterval(poll, 3000)
+</script>
+</body>
+</html>
