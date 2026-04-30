@@ -132,7 +132,18 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .setting-unit{font-size:10px;color:var(--dim);width:32px}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 
-/* ── CONNECT SCREEN ── */
+/* ── SECURITY SCREEN ── */
+.security-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:200;flex-direction:column;gap:16px}
+.security-box{background:var(--card);border:1px solid var(--border2);padding:32px 36px;max-width:380px;width:100%;text-align:center}
+.security-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--bright);margin-bottom:6px}
+.security-sub{font-size:11px;color:var(--dim);margin-bottom:24px;line-height:1.6}
+.security-input{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--bright);font-family:var(--mono);font-size:14px;padding:10px 14px;outline:none;text-align:center;letter-spacing:.1em;margin-bottom:12px}
+.security-input:focus{border-color:var(--accent)}
+.security-btn{width:100%;padding:10px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:var(--accent);color:#000;border:none;cursor:pointer;font-weight:700}
+.security-btn:hover{filter:brightness(1.1)}
+.security-error{background:rgba(255,56,96,.08);border:1px solid rgba(255,56,96,.3);color:var(--red);font-size:11px;padding:8px 12px;margin-bottom:12px;display:none}
+.security-attempts{font-size:10px;color:var(--muted);margin-top:10px}
+.lock-icon{font-size:32px;margin-bottom:16px;opacity:.8}
 .connect-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:100;flex-direction:column;gap:24px}
 .connect-box{background:var(--card);border:1px solid var(--border2);padding:32px 36px;max-width:400px;width:100%;text-align:center}
 .connect-error{background:rgba(255,56,96,.08);border:1px solid rgba(255,56,96,.3);color:var(--red);font-size:11px;padding:8px 12px;margin-bottom:16px}
@@ -156,6 +167,30 @@ button:disabled{opacity:.4;cursor:not-allowed}
 </head>
 <body>
 <div class="bg-grid"></div>
+
+<!-- ── SECURITY SCREEN ── -->
+<div class="security-screen" id="securityScreen">
+  <div style="position:relative;z-index:1;width:100%;display:flex;flex-direction:column;align-items:center;gap:16px">
+    <div class="logo" style="justify-content:center;margin-bottom:8px">
+      <div class="logo-hex">X1</div>
+      <span style="color:var(--bright)">X1 <span style="color:var(--accent)">ARB</span> <span style="color:var(--orange)">⚡</span></span>
+    </div>
+
+    <div class="security-box">
+      <div class="lock-icon">🔐</div>
+      <div class="security-title">Private Access</div>
+      <div class="security-sub">This trading dashboard is private.<br>Enter the access password to continue.</div>
+      <div class="security-error" id="securityError">Incorrect password. Try again.</div>
+      <input class="security-input" id="passwordInput" type="password" placeholder="#Testimonio1" onkeydown="if(event.key==='Enter')checkPassword()">
+      <button class="security-btn" onclick="checkPassword()">Enter</button>
+      <div class="security-attempts" id="attemptsLeft"></div>
+    </div>
+
+    <div style="font-size:10px;color:var(--muted);text-align:center">
+      Unauthorized access is prohibited
+    </div>
+  </div>
+</div>
 
 <!-- ── CONNECT SCREEN ── -->
 <div class="connect-screen" id="connectScreen">
@@ -387,6 +422,61 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
+// ─── Security Config ──────────────────────────────────────────────────────────
+// CHANGE THESE VALUES:
+const ACCESS_PASSWORD    = 'x1arb2024!'           // your secret password
+const ALLOWED_WALLETS    = [
+  '9BWUGKCZfKCk5EinWnCfmfxJSxmCwwM3tK8pAMFNrr7T', // your Backpack wallet
+]
+const MAX_ATTEMPTS       = 5    // lockout after this many wrong passwords
+const LOCKOUT_MINUTES    = 15   // lockout duration
+
+// ─── Password Gate ────────────────────────────────────────────────────────────
+let attempts = 0
+let lockedUntil = null
+
+function checkPassword() {
+  // Check lockout
+  if (lockedUntil && Date.now() < lockedUntil) {
+    const mins = Math.ceil((lockedUntil - Date.now()) / 60000)
+    $('securityError').textContent = `Too many attempts. Try again in ${mins} minute(s).`
+    $('securityError').style.display = 'block'
+    return
+  }
+
+  const input = $('passwordInput').value
+  if (input === ACCESS_PASSWORD) {
+    // Correct — store session and show connect screen
+    sessionStorage.setItem('auth', btoa(ACCESS_PASSWORD + Date.now()))
+    $('securityScreen').style.display = 'none'
+    $('connectScreen').style.display = 'flex'
+    $('passwordInput').value = ''
+  } else {
+    attempts++
+    const remaining = MAX_ATTEMPTS - attempts
+    if (remaining <= 0) {
+      lockedUntil = Date.now() + LOCKOUT_MINUTES * 60000
+      $('securityError').textContent = `Too many attempts. Locked for ${LOCKOUT_MINUTES} minutes.`
+      $('attemptsLeft').textContent = ''
+    } else {
+      $('securityError').textContent = 'Incorrect password. Try again.'
+      $('attemptsLeft').textContent = `${remaining} attempt(s) remaining`
+    }
+    $('securityError').style.display = 'block'
+    $('passwordInput').value = ''
+    $('passwordInput').focus()
+  }
+}
+
+// Check if already authenticated this session
+function initSecurity() {
+  const auth = sessionStorage.getItem('auth')
+  if (auth) {
+    $('securityScreen').style.display = 'none'
+    $('connectScreen').style.display = 'flex'
+  }
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let walletPubkey  = null
 let botUrl        = localStorage.getItem('botUrl') || 'http://localhost:3001'
@@ -436,6 +526,14 @@ async function connectWallet() {
     const resp = await provider.connect()
     walletPubkey = resp.publicKey?.toString() || provider.publicKey?.toString()
     if (!walletPubkey) throw new Error('Could not get public key')
+
+    // ── Wallet whitelist check ──
+    if (ALLOWED_WALLETS.length > 0 && !ALLOWED_WALLETS.includes(walletPubkey)) {
+      await provider.disconnect()
+      walletPubkey = null
+      throw new Error('Access denied — this wallet is not authorised')
+    }
+
     $('connectScreen').style.display = 'none'
     $('mainApp').style.display = 'grid'
     $('walletAddr').textContent  = fmt.addr(walletPubkey)
@@ -458,6 +556,7 @@ function disconnectWallet() {
 
 // Auto-reconnect
 window.addEventListener('load', () => {
+  initSecurity()
   const p = getProvider()
   if (p?.isConnected && p?.publicKey) {
     walletPubkey = p.publicKey.toString()
