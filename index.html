@@ -341,8 +341,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0">XN</div>
               <div style="flex:1">
-                <div style="font-size:15px;font-weight:500;color:var(--bright)">XNT</div>
-                <div style="font-size:10px;color:var(--dim);margin-top:2px">Native token · X1 Mainnet</div>
+                <div style="font-size:15px;font-weight:500;color:var(--bright)">wXNT</div>
+                <div style="font-size:10px;color:var(--dim);margin-top:2px">Wrapped XNT · auto-wrapped before swap</div>
               </div>
               <input id="swapAmt" type="number" placeholder="0.00" min="0" step="any" style="font-size:22px;font-weight:500;color:var(--bright);background:transparent;border:none;outline:none;width:110px;text-align:right;font-family:var(--mono)">
             </div>
@@ -414,9 +414,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
         <!-- Help text -->
         <div style="font-size:10px;color:var(--dim);line-height:1.7;padding:0 4px">
+          Swap against tokens that have <strong style="color:var(--text)">graduated</strong> from degen.fyi to XDEX.
           Find token addresses at <a href="https://app.xdex.xyz" target="_blank">app.xdex.xyz</a>.
-          Click <strong style="color:var(--text)">Get Quote</strong> first, then <strong style="color:var(--text)">Swap →</strong> to execute.<br>
-          <span style="color:var(--yellow)">⚠ You need wrapped XNT to swap. Go to app.xdex.xyz → Wrap/Unwrap to convert your native XNT first.</span>
+          Your native XNT is <strong style="color:var(--text)">automatically wrapped</strong> before each swap — no manual steps needed.
         </div>
 
       </div>
@@ -954,11 +954,10 @@ async function execSwap() {
   finally { $('swapBtn').disabled = false }
 }
 
-// XNT native token on X1 — use native mint address
-// X1 is SVM-based so native token uses same address as native SOL
+// wXNT — wrapped XNT used for trading on XDEX (graduated tokens trade against wXNT)
+// Native XNT = So11111111111111111111111111111111111111112
+// The bot auto-wraps native XNT before swapping
 const XNT_MINT = 'So11111111111111111111111111111111111111112'
-// Note: if XDEX requires native XNT (not wrapped), swap will use 'native' keyword
-const XNT_NATIVE = 'native'
 
 function setSlip(el, val) {
   document.querySelectorAll('.slip-chip').forEach(c => c.classList.remove('active'))
