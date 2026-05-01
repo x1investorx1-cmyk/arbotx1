@@ -341,13 +341,13 @@ button:disabled{opacity:.4;cursor:not-allowed}
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0">XN</div>
               <div style="flex:1">
-                <div style="font-size:14px;font-weight:500;color:var(--bright);margin-bottom:3px">XNT</div>
-                <input id="swapIn" class="input" placeholder="Or paste different token address…" style="font-size:10px;padding:3px 6px;background:transparent;border-color:transparent;color:var(--dim)">
+                <div style="font-size:15px;font-weight:500;color:var(--bright)">XNT</div>
+                <div style="font-size:10px;color:var(--dim);margin-top:2px">Native token · X1 Mainnet</div>
               </div>
-              <input id="swapAmt" type="number" placeholder="0.00" style="font-size:22px;font-weight:500;color:var(--bright);background:transparent;border:none;outline:none;width:110px;text-align:right;font-family:var(--mono)">
+              <input id="swapAmt" type="number" placeholder="0.00" min="0" step="any" style="font-size:22px;font-weight:500;color:var(--bright);background:transparent;border:none;outline:none;width:110px;text-align:right;font-family:var(--mono)">
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-              <span style="font-size:10px;color:var(--dim)" id="swapInBal">Balance: —</span>
+              <span style="font-size:10px;color:var(--dim)" id="swapInBal">Balance: check Backpack</span>
               <button onclick="setMax()" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:var(--mono)">MAX</button>
             </div>
           </div>
@@ -913,22 +913,23 @@ async function manualSnipe(mint) {
 }
 
 async function getQuote() {
-  const tokenIn = $('swapIn').value.trim(), tokenOut = $('swapOut').value.trim(), amount = $('swapAmt').value
-  if (!tokenIn||!tokenOut||!amount) { toast('Fill all fields first', 'error'); return }
+  const tokenOut = $('swapOut').value.trim()
+  const amount   = $('swapAmt').value
+  if (!tokenOut) { toast('Paste the token address you want to buy', 'error'); return }
+  if (!amount || parseFloat(amount) <= 0) { toast('Enter an amount to pay', 'error'); return }
   try {
     $('quoteBtn').disabled = true
     $('quoteBtn').textContent = 'Fetching…'
-    const r = await api('GET', `/quote?token_in=${tokenIn}&token_out=${tokenOut}&amount=${amount}`)
-    // Use the pre-extracted amount_out field, fall back to searching quote object
+    const r = await api('GET', `/quote?token_in=${XNT_MINT}&token_out=${tokenOut}&amount=${amount}`)
     const out = r.amount_out ??
       r.quote?.amount_out ??
       r.quote?.outAmount ??
       r.quote?.out_amount ??
       r.quote?.data?.amount_out ??
       r.quote?.result?.amount_out
-    if (!out) { toast('Quote returned no price — check token addresses', 'error'); return }
+    if (!out) { toast('No price returned — check the token address', 'error'); return }
     $('qOut').textContent  = parseFloat(out).toFixed(6)
-    $('qRate').textContent = `1 → ${(parseFloat(out)/parseFloat(amount)).toFixed(6)}`
+    $('qRate').textContent = `1 XNT → ${(parseFloat(out)/parseFloat(amount)).toFixed(6)}`
     $('swapOutAmt').textContent = parseFloat(out).toFixed(4)
     $('quoteBox').style.display = 'block'
     $('swapBtn').disabled = false
@@ -938,16 +939,20 @@ async function getQuote() {
 }
 
 async function execSwap() {
-  const tokenIn = $('swapIn').value.trim(), tokenOut = $('swapOut').value.trim(), amountIn = parseFloat($('swapAmt').value)
-  if (!confirm(`Swap ${amountIn} → proceed?`)) return
+  const tokenOut = $('swapOut').value.trim()
+  const amountIn = parseFloat($('swapAmt').value)
+  if (!confirm(`Swap ${amountIn} XNT → proceed?`)) return
   try {
     $('swapBtn').disabled = true
-    const r = await api('POST', '/swap', { tokenIn, tokenOut, amountIn })
+    const r = await api('POST', '/swap', { tokenIn: XNT_MINT, tokenOut, amountIn })
     if (r.dryRun) toast(`[DRY RUN] Est. out: ${r.estimatedOut?.toFixed(4)??'?'}`, 'info')
     else toast(`Confirmed! ${r.sig?.slice(0,14)}…`, 'success')
   } catch(e) { toast('Swap failed: '+e.message, 'error') }
   finally { $('swapBtn').disabled = false }
 }
+
+// XNT native token (wrapped native — same pattern as wSOL on Solana)
+const XNT_MINT = 'So11111111111111111111111111111111111111112'
 
 function setSlip(el, val) {
   document.querySelectorAll('.slip-chip').forEach(c => c.classList.remove('active'))
@@ -955,18 +960,18 @@ function setSlip(el, val) {
 }
 
 function setMax() {
-  if (botStatus?.wallet) {
-    // Use balance from status if available, otherwise just hint
-    toast('Set amount manually — balance shown in Backpack', 'info')
-  }
+  toast('Check your Backpack wallet for your XNT balance', 'info')
 }
 
 function flipSwap() {
-  const a = $('swapIn').value, b = $('swapOut').value
-  $('swapIn').value = b; $('swapOut').value = a
+  // After flip, the token out address becomes the new "pay" token
+  // For simplicity, just clear and let user re-enter
+  const b = $('swapOut').value
+  $('swapOut').value = ''
   $('swapBtn').disabled = true
   $('quoteBox').style.display = 'none'
   $('swapOutAmt').textContent = '—'
+  if (b) toast('Flipped — XNT is now the output. Paste new input token address in the To field.', 'info')
 }
 
 function saveBotUrl() {
