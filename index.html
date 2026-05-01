@@ -922,10 +922,12 @@ async function getQuote() {
     $('quoteBtn').textContent = 'Fetching…'
     const r = await api('GET', `/quote?token_in=${XNT_MINT}&token_out=${tokenOut}&amount=${amount}`)
     const out = r.amount_out ??
+      r.quote?.data?.outputAmount ??
+      r.quote?.data?.amount_out ??
       r.quote?.amount_out ??
       r.quote?.outAmount ??
       r.quote?.out_amount ??
-      r.quote?.data?.amount_out ??
+      r.quote?.outputAmount ??
       r.quote?.result?.amount_out
     if (!out) { toast('No price returned — check the token address', 'error'); return }
     $('qOut').textContent  = parseFloat(out).toFixed(6)
