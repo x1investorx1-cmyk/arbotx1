@@ -414,8 +414,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
         <!-- Help text -->
         <div style="font-size:10px;color:var(--dim);line-height:1.7;padding:0 4px">
-          Enter token mint addresses from <a href="https://app.xdex.xyz" target="_blank">app.xdex.xyz</a>.
-          Click <strong style="color:var(--text)">Get Quote</strong> first to see the rate, then <strong style="color:var(--text)">Swap →</strong> to execute.
+          Find token addresses at <a href="https://app.xdex.xyz" target="_blank">app.xdex.xyz</a>.
+          Click <strong style="color:var(--text)">Get Quote</strong> first, then <strong style="color:var(--text)">Swap →</strong> to execute.<br>
+          <span style="color:var(--yellow)">⚠ You need wrapped XNT to swap. Go to app.xdex.xyz → Wrap/Unwrap to convert your native XNT first.</span>
         </div>
 
       </div>
@@ -953,8 +954,11 @@ async function execSwap() {
   finally { $('swapBtn').disabled = false }
 }
 
-// XNT native token (wrapped native — same pattern as wSOL on Solana)
+// XNT native token on X1 — use native mint address
+// X1 is SVM-based so native token uses same address as native SOL
 const XNT_MINT = 'So11111111111111111111111111111111111111112'
+// Note: if XDEX requires native XNT (not wrapped), swap will use 'native' keyword
+const XNT_NATIVE = 'native'
 
 function setSlip(el, val) {
   document.querySelectorAll('.slip-chip').forEach(c => c.classList.remove('active'))
