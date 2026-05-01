@@ -231,6 +231,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     <div class="nav">
       <button class="nav-tab active" onclick="switchTab('arb',this)">Arb Monitor</button>
       <button class="nav-tab" onclick="switchTab('sniper',this)" style="color:var(--orange)">⚡ Sniper</button>
+      <button class="nav-tab" onclick="switchTab('dip',this)" style="color:var(--green)">📉 Dip Scanner</button>
       <button class="nav-tab" onclick="switchTab('trade',this)">Manual Trade</button>
       <button class="nav-tab" onclick="switchTab('history',this)">History</button>
       <button class="nav-tab" onclick="switchTab('settings',this)">Settings</button>
@@ -254,6 +255,16 @@ button:disabled{opacity:.4;cursor:not-allowed}
       <div class="aside-label" style="color:var(--orange)">Sniper Controls</div>
       <button class="ctrl-btn btn-orange" onclick="sniperAction('start')">⚡ Start Sniper</button>
       <button class="ctrl-btn btn-danger" onclick="sniperAction('stop')">■ Stop Sniper</button>
+    </div>
+    <div class="aside-section">
+      <div class="aside-label" style="color:var(--green)">Dip Scanner</div>
+      <button class="ctrl-btn btn-green" onclick="dipAction('start')">📉 Start Dip Scanner</button>
+      <button class="ctrl-btn btn-danger" onclick="dipAction('stop')">■ Stop</button>
+      <div style="margin-top:8px">
+        <div class="stat-mini"><div class="stat-label">Scanned</div><div class="stat-val" id="dipScanned" style="color:var(--green)">0</div></div>
+        <div class="stat-mini"><div class="stat-label">Opportunities</div><div class="stat-val" id="dipOpps" style="color:var(--yellow)">0</div></div>
+        <div class="stat-mini"><div class="stat-label">Bought</div><div class="stat-val" id="dipBought" style="color:var(--accent)">0</div></div>
+      </div>
     </div>
     <div class="aside-section">
       <div class="aside-label">Session Stats</div>
@@ -486,6 +497,76 @@ button:disabled{opacity:.4;cursor:not-allowed}
         </div>
       </div>
     </div>
+    <!-- DIP SCANNER TAB -->
+    <div class="tab-view" id="tab-dip">
+
+      <!-- Stats row -->
+      <div class="stats-grid">
+        <div class="stat-card" style="border-top-color:var(--green)"><div class="stat-card-label">Scanned</div><div class="stat-card-val" id="dipScannedBig" style="color:var(--green)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--yellow)"><div class="stat-card-label">Opportunities</div><div class="stat-card-val" id="dipOppsBig" style="color:var(--yellow)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--accent)"><div class="stat-card-label">Bought ✓</div><div class="stat-card-val" id="dipBoughtBig" style="color:var(--accent)">0</div></div>
+        <div class="stat-card" style="border-top-color:var(--red)"><div class="stat-card-label">Failed</div><div class="stat-card-val" id="dipFailedBig" style="color:var(--red)">0</div></div>
+      </div>
+
+      <!-- Config -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" style="color:var(--green)">📉 Dip Scanner Config — XDEX Graduated Tokens</div>
+          <button class="btn btn-primary" onclick="saveDipConfig()" style="font-size:9px;padding:4px 12px">Apply</button>
+        </div>
+        <div class="panel-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div class="setting-group" style="margin:0">
+            <div class="setting-label">Min Dip from ATH</div>
+            <div class="setting-row"><input class="input" id="dipCfgMin" type="number" value="30" min="5" max="90" style="max-width:100px"><span class="setting-unit">%</span></div>
+          </div>
+          <div class="setting-group" style="margin:0">
+            <div class="setting-label">Max Dip (avoid rugs)</div>
+            <div class="setting-row"><input class="input" id="dipCfgMax" type="number" value="70" min="10" max="95" style="max-width:100px"><span class="setting-unit">%</span></div>
+          </div>
+          <div class="setting-group" style="margin:0">
+            <div class="setting-label">Buy Amount</div>
+            <div class="setting-row"><input class="input" id="dipCfgAmount" type="number" value="5" step="0.1" style="max-width:100px"><span class="setting-unit">XNT</span></div>
+          </div>
+          <div class="setting-group" style="margin:0">
+            <div class="setting-label">Min Score</div>
+            <div class="setting-row"><input class="input" id="dipCfgScore" type="number" value="60" min="0" max="100" style="max-width:100px"><span class="setting-unit">/100</span></div>
+          </div>
+          <div class="setting-group" style="margin:0">
+            <div class="setting-label">Min Liquidity</div>
+            <div class="setting-row"><input class="input" id="dipCfgLiquidity" type="number" value="100" style="max-width:100px"><span class="setting-unit">XNT</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="toggle-row" style="margin:0">
+              <span style="font-size:11px;color:var(--text)">Auto-Buy Dips</span>
+              <input type="checkbox" id="dipCfgAuto">
+            </div>
+            <div style="font-size:9px;color:var(--muted);line-height:1.6">Auto-buy fires when score ≥ threshold. Keep off until filters are tuned.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Token feed -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Dip Opportunities — Graduated XDEX Tokens</div>
+          <span id="dipTokenCount" style="font-size:10px;color:var(--dim)">0 tokens</span>
+        </div>
+        <div class="scan-track" id="dipScanTrack"></div>
+        <div class="panel-body" style="max-height:420px;overflow-y:auto" id="dipTokenList">
+          <div class="empty"><div class="empty-ico">📉</div>Waiting for first scan…</div>
+        </div>
+      </div>
+
+      <!-- Buy history -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Dip Buy History</div></div>
+        <div class="panel-body" id="dipBuyHistory">
+          <div class="empty" style="padding:10px 0">No buys yet</div>
+        </div>
+      </div>
+
+    </div>
+
   </main>
 
   <!-- RIGHT PANEL -->
@@ -724,6 +805,7 @@ function updateUI(s) {
 
   // Sniper
   if (s.sniper) renderSniperUI(s.sniper)
+  if (s.dipScanner) renderDipScanner(s.dipScanner)
 
   // Right panel trades
   renderRpTrades(s.tradeHistory || [])
@@ -873,6 +955,7 @@ function renderTokens() {
           <span class="signal-chip ${t.hasWebsite?'chip-yes':'chip-no'}">${t.hasWebsite?'✓':'✗'} site</span>
           <span class="signal-chip ${t.hasVideo?'chip-yes':'chip-no'}">${t.hasVideo?'✓':'✗'} video</span>
           ${t.passesFilter?'<span class="signal-chip chip-yes">★ QUALIFIED</span>':''}
+          ${t.graduated?'<span class="signal-chip" style="border-color:rgba(0,212,255,.4);color:var(--accent)">✓ XDEX</span>':'<span class="signal-chip" style="border-color:rgba(255,107,53,.4);color:var(--orange)">⚡ BONDING</span>'}
         </div>
         <div class="score-track"><div class="score-fill" style="width:${t.score||0}%"></div></div>
         <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px">
@@ -1016,7 +1099,109 @@ async function saveSniperConfig() {
   } catch(e) { toast(e.message, 'error') }
 }
 
-// ─── Poll ─────────────────────────────────────────────────────────────────────
+// ─── Dip Scanner ─────────────────────────────────────────────────────────────
+
+async function dipAction(action) {
+  try { await api('POST', `/dip/${action}`); toast(`Dip scanner ${action}ed`, 'success') }
+  catch(e) { toast(e.message, 'error') }
+}
+
+async function saveDipConfig() {
+  try {
+    await api('POST', '/dip/config', {
+      minDipPct:       parseFloat($('dipCfgMin').value),
+      maxDipPct:       parseFloat($('dipCfgMax').value),
+      buyAmountXnt:    parseFloat($('dipCfgAmount').value),
+      minDipScore:     parseInt($('dipCfgScore').value),
+      minLiquidityXnt: parseFloat($('dipCfgLiquidity').value),
+      autoBuy:         $('dipCfgAuto').checked,
+    })
+    toast('Dip scanner config saved', 'success')
+  } catch(e) { toast(e.message, 'error') }
+}
+
+async function manualDipBuy(address) {
+  const amount = parseFloat($('dipCfgAmount').value) || 5
+  if (!confirm(`Buy dip: ${address.slice(0,12)}… for ${amount} XNT?`)) return
+  try {
+    const r = await api('POST', '/dip/buy', { address, amount })
+    if (r.dryRun) toast('[DRY RUN] Simulated dip buy', 'info')
+    else toast(`Bought! ${r.sig?.slice(0,14)||'✓'}`, 'success')
+  } catch(e) { toast('Buy failed: ' + e.message, 'error') }
+}
+
+function renderDipScanner(dip) {
+  if (!dip) return
+  const st = dip.stats || {}
+  $('dipScanned').textContent = $('dipScannedBig').textContent  = st.tokensScanned  || 0
+  $('dipOpps').textContent    = $('dipOppsBig').textContent     = st.opportunities   || 0
+  $('dipBought').textContent  = $('dipBoughtBig').textContent   = st.buysSuccess     || 0
+  $('dipFailedBig').textContent = st.buysFailed || 0
+
+  if (dip.running) $('dipScanTrack').classList.add('active')
+  else $('dipScanTrack').classList.remove('active')
+
+  // Populate config once
+  if (dip.config && !$('dipCfgMin').dataset.loaded) {
+    $('dipCfgMin').value      = dip.config.minDipPct      || 30
+    $('dipCfgMax').value      = dip.config.maxDipPct      || 70
+    $('dipCfgAmount').value   = dip.config.buyAmountXnt   || 5
+    $('dipCfgScore').value    = dip.config.minDipScore     || 60
+    $('dipCfgLiquidity').value = dip.config.minLiquidityXnt || 100
+    $('dipCfgAuto').checked   = dip.config.autoBuy || false
+    $('dipCfgMin').dataset.loaded = '1'
+  }
+
+  // Token list
+  const tokens = dip.allScanned || []
+  $('dipTokenCount').textContent = `${tokens.length} tokens`
+  if (!tokens.length) {
+    $('dipTokenList').innerHTML = '<div class="empty"><div class="empty-ico">📉</div>Scanning XDEX graduated tokens…</div>'
+  } else {
+    $('dipTokenList').innerHTML = tokens.map(t => `
+      <div class="token-card ${t.passesFilter ? 'qualified' : ''}">
+        <div>
+          <div>
+            <span style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--bright)">${esc(t.name||t.symbol||'Unknown')}</span>
+            <span style="font-size:9px;color:var(--dim);margin-left:6px">${esc(t.symbol||'')}</span>
+            ${t.passesFilter ? '<span class="signal-chip chip-yes" style="margin-left:6px">★ DIP BUY</span>' : ''}
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">${esc(t.address||'—')}</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:10px">
+            <span style="color:${t.dipPct>=30&&t.dipPct<=70?'var(--green)':'var(--red)'}">📉 ${(t.dipPct||0).toFixed(1)}% from ATH</span>
+            <span style="color:var(--dim)">👥 ${t.holders||0} holders</span>
+            <span style="color:var(--dim)">B/S: ${(t.buySellRatio||0).toFixed(2)}</span>
+            <span style="color:var(--dim)">💧 ${(t.liquidity||0).toFixed(0)} XNT</span>
+          </div>
+          <!-- Score bar -->
+          <div style="margin-top:8px">
+            <div style="height:3px;background:var(--border)">
+              <div style="height:100%;width:${t.score||0}%;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));transition:width .4s"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px">
+              <span>Score: ${t.score||0}/100</span>
+              <span>$${t.price?.toFixed(8)||'—'}</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          ${t.passesFilter ? `<button class="btn btn-green" onclick="manualDipBuy('${esc(t.address)}')" style="font-size:10px;padding:5px 10px">📉 Buy Dip</button>` : ''}
+        </div>
+      </div>`).join('')
+  }
+
+  // Buy history
+  const bought = dip.bought || []
+  $('dipBuyHistory').innerHTML = !bought.length
+    ? '<div class="empty" style="padding:10px 0">No buys yet</div>'
+    : bought.map(b => `
+      <div class="trade-row">
+        <div style="width:6px;height:6px;border-radius:50%;background:${b.status==='success'?'var(--green)':'var(--red)'};flex-shrink:0"></div>
+        <div style="color:var(--green);width:60px;font-size:10px">dip buy</div>
+        <div style="flex:1;color:var(--text);font-size:10px">${esc(b.symbol||b.address?.slice(0,10)||'?')} — ${(b.dipPct||0).toFixed(1)}% dip</div>
+        <div style="color:${b.status==='success'?'var(--green)':'var(--red)'};font-size:10px">${b.status==='success'?`${b.amountIn} XNT`:'✗ '+(b.error||'').slice(0,20)}</div>
+      </div>`).join('')
+}
 // Only poll when authenticated and wallet connected
 function shouldPoll() { return authenticated && walletPubkey }
 
