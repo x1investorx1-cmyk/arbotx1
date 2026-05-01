@@ -204,15 +204,29 @@ button:disabled{opacity:.4;cursor:not-allowed}
     </div>
 
     <div class="connect-box">
-      <div style="font-size:13px;color:var(--text);margin-bottom:8px;line-height:1.6">Connect your Backpack wallet to access the trading dashboard.</div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:24px;line-height:1.7">Your private key never leaves your wallet. All transactions are signed locally by Backpack.</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:8px;line-height:1.6">Connect your wallet to access the trading dashboard.</div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:20px;line-height:1.7">Your private key never leaves your wallet. All transactions are signed locally.</div>
       <div class="connect-error" id="connectError" style="display:none"></div>
-      <button class="btn btn-filled" id="connectBtn" onclick="connectWallet()" style="width:100%;padding:12px;font-size:12px">🎒 Connect Backpack</button>
-      <div style="margin-top:14px;font-size:10px;color:var(--muted)">Don't have Backpack? <a href="https://backpack.app" target="_blank">backpack.app</a></div>
+
+      <!-- Wallet options -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <button class="btn btn-filled" id="connectBtn" onclick="connectWallet('backpack')" style="width:100%;padding:12px;font-size:12px;display:flex;align-items:center;justify-content:center;gap:10px">
+          <span style="font-size:16px">🎒</span> Connect Backpack
+        </button>
+        <button class="btn" onclick="connectWallet('x1')" style="width:100%;padding:12px;font-size:12px;border-color:var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;gap:10px">
+          <span style="font-size:16px">⚡</span> Connect X1 Wallet
+        </button>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+      <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.7">
+        Don't have a wallet?<br>
+        <a href="https://backpack.app" target="_blank">Backpack</a> · <a href="https://wallet.x1.xyz" target="_blank">X1 Wallet</a>
+      </div>
     </div>
 
     <div class="rpc-hint">
-      <strong>Set X1 RPC in Backpack first:</strong><br>
+      <strong>Set X1 RPC in your wallet first:</strong><br>
       Settings → Solana → RPC Connection → Custom →<br>
       <code style="color:var(--yellow);background:rgba(255,201,64,.1)">https://rpc.mainnet.x1.xyz</code>
     </div>
@@ -686,38 +700,59 @@ async function api(method, path, body) {
 }
 
 // ─── Wallet ───────────────────────────────────────────────────────────────────
-function getProvider() {
+let activeWalletType = localStorage.getItem('walletType') || 'backpack'
+
+function getProvider(walletType) {
+  const type = walletType || activeWalletType
+  if (type === 'x1') {
+    return window?.x1?.solana ||
+           window?.x1wallet?.solana ||
+           window?.x1Wallet?.solana ||
+           window?.xone?.solana ||
+           window?.xfi?.solana
+  }
   return window?.backpack?.solana || window?.xnft?.solana || window?.solana
 }
 
-async function connectWallet() {
-  const btn = $('connectBtn')
-  btn.textContent = 'Connecting…'
-  btn.disabled = true
+async function connectWallet(walletType) {
+  walletType = walletType || 'backpack'
+  const btns = document.querySelectorAll('.connect-box button')
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '.5' })
+  const err = $('connectError')
+  err.style.display = 'none'
+
   try {
-    const provider = getProvider()
-    if (!provider) throw new Error('Backpack not found — install it from backpack.app')
+    const provider = getProvider(walletType)
+    if (!provider) {
+      const name = walletType === 'x1' ? 'X1 Wallet' : 'Backpack'
+      const url  = walletType === 'x1' ? 'wallet.x1.xyz' : 'backpack.app'
+      throw new Error(`${name} not found — install it from ${url}`)
+    }
+
     const resp = await provider.connect()
     walletPubkey = resp.publicKey?.toString() || provider.publicKey?.toString()
     if (!walletPubkey) throw new Error('Could not get public key')
 
-    // ── Wallet whitelist check ──
     if (ALLOWED_WALLETS.length > 0 && !ALLOWED_WALLETS.includes(walletPubkey)) {
       await provider.disconnect()
       walletPubkey = null
       throw new Error('Access denied — this wallet is not authorised')
     }
 
+    activeWalletType = walletType
+    localStorage.setItem('walletType', walletType)
+
     $('connectScreen').style.display = 'none'
     $('mainApp').style.display = 'grid'
-    $('walletAddr').textContent  = fmt.addr(walletPubkey)
-    $('walletFull').textContent  = walletPubkey
+    const icon = walletType === 'x1' ? '⚡' : '🎒'
+    $('walletAddr').textContent = `${icon} ${fmt.addr(walletPubkey)}`
+    $('walletFull').textContent = walletPubkey
+
   } catch(e) {
-    const err = $('connectError')
     err.textContent = e.message
     err.style.display = 'block'
-    btn.textContent = '🎒 Connect Backpack'
-    btn.disabled = false
+  } finally {
+    btns.forEach(b => { b.disabled = false; b.style.opacity = '1' })
   }
 }
 
@@ -725,7 +760,9 @@ function disconnectWallet() {
   try { getProvider()?.disconnect() } catch {}
   walletPubkey = null
   authenticated = false
-  sessionStorage.removeItem('auth')  // force re-auth on next visit
+  activeWalletType = 'backpack'
+  sessionStorage.removeItem('auth')
+  localStorage.removeItem('walletType')
   $('mainApp').style.display = 'none'
   $('connectScreen').style.display = 'none'
   $('securityScreen').style.display = 'flex'
@@ -738,14 +775,17 @@ window.addEventListener('load', () => {
   initSecurity()
   // Only auto-reconnect wallet if already authenticated
   if (authenticated) {
-    const p = getProvider()
+    const savedType = localStorage.getItem('walletType') || 'backpack'
+    const p = getProvider(savedType)
     if (p?.isConnected && p?.publicKey) {
       const pubkey = p.publicKey.toString()
       if (!ALLOWED_WALLETS.length || ALLOWED_WALLETS.includes(pubkey)) {
         walletPubkey = pubkey
+        activeWalletType = savedType
         $('connectScreen').style.display = 'none'
         $('mainApp').style.display = 'grid'
-        $('walletAddr').textContent = fmt.addr(walletPubkey)
+        const icon = savedType === 'x1' ? '⚡' : '🎒'
+        $('walletAddr').textContent = `${icon} ${fmt.addr(walletPubkey)}`
         $('walletFull').textContent = walletPubkey
       }
     }
