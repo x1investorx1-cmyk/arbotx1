@@ -160,7 +160,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .toast-error{border-color:var(--red);background:rgba(255,56,96,.08);color:var(--red)}
 .toast-info{border-color:var(--accent);background:rgba(0,212,255,.08);color:var(--accent)}
 
-/* ── EMPTY STATE ── */
+/* ── SWAP REDESIGN ── */
+.slip-chip{font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);cursor:pointer;color:var(--dim);background:var(--card);font-family:var(--mono);transition:all .15s}
+.slip-chip.active{background:var(--surface);border-color:var(--accent);color:var(--accent)}
+.slip-chip:hover{border-color:var(--border2);color:var(--text)}
 .empty{padding:24px;text-align:center;color:var(--muted);font-size:11px}
 .empty-ico{font-size:24px;opacity:.4;margin-bottom:8px}
 </style>
@@ -321,21 +324,100 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
     <!-- TRADE TAB -->
     <div class="tab-view" id="tab-trade">
-      <div class="panel" style="max-width:520px">
-        <div class="panel-header"><div class="panel-title">Manual Swap — XDEX</div></div>
-        <div class="panel-body">
-          <div class="token-box"><div class="tok-label">From — Token Address</div><input class="input" id="swapIn" placeholder="Token mint address…"></div>
-          <div class="token-box"><div class="tok-label">Amount</div><input class="input" id="swapAmt" type="number" placeholder="0.00" style="font-size:18px"></div>
-          <button onclick="flipSwap()" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border2);color:var(--dim);cursor:pointer;font-family:var(--mono);font-size:11px;margin-bottom:8px">⇅ flip</button>
-          <div class="token-box"><div class="tok-label">To — Token Address</div><input class="input" id="swapOut" placeholder="Token mint address…"></div>
-          <div class="quote-box" id="quoteBox" style="display:none">
-            <div class="quote-row"><span style="color:var(--dim)">Estimated out</span><span id="qOut" style="color:var(--bright)">—</span></div>
-            <div class="quote-row"><span style="color:var(--dim)">Rate</span><span id="qRate" style="color:var(--text)">—</span></div>
-            <div class="quote-row"><span style="color:var(--dim)">Fee</span><span style="color:var(--yellow)">0.28% XDEX</span></div>
+      <div style="max-width:480px">
+
+        <!-- Swap card -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px">
+
+          <!-- Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-size:13px;font-weight:500;color:var(--bright)">Swap tokens</div>
+            <div style="font-size:10px;padding:3px 8px;background:rgba(0,212,255,.1);color:var(--accent);border-radius:4px">XDEX · X1 Mainnet</div>
           </div>
-          <button class="btn btn-primary" onclick="getQuote()" id="quoteBtn" style="width:100%;padding:10px;margin-bottom:8px">Get Quote</button>
-          <button class="btn btn-filled" onclick="execSwap()" id="swapBtn" disabled style="width:100%;padding:10px">Execute Swap</button>
+
+          <!-- You Pay -->
+          <div style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:12px 14px;margin-bottom:6px">
+            <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:10px">You pay</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,212,255,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0">XN</div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:500;color:var(--bright);margin-bottom:3px">XNT</div>
+                <input id="swapIn" class="input" placeholder="Or paste different token address…" style="font-size:10px;padding:3px 6px;background:transparent;border-color:transparent;color:var(--dim)">
+              </div>
+              <input id="swapAmt" type="number" placeholder="0.00" style="font-size:22px;font-weight:500;color:var(--bright);background:transparent;border:none;outline:none;width:110px;text-align:right;font-family:var(--mono)">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+              <span style="font-size:10px;color:var(--dim)" id="swapInBal">Balance: —</span>
+              <button onclick="setMax()" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:var(--mono)">MAX</button>
+            </div>
+          </div>
+
+          <!-- Flip -->
+          <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <button onclick="flipSwap()" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--dim)'">⇅</button>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+          </div>
+
+          <!-- You Receive -->
+          <div style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:12px 14px;margin-bottom:12px">
+            <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:10px">You receive</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,255,136,.1);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--green);flex-shrink:0">?</div>
+              <div style="flex:1">
+                <div style="font-size:13px;color:var(--dim);margin-bottom:3px">Select token</div>
+                <input id="swapOut" class="input" placeholder="Paste token mint address…" style="font-size:10px;padding:3px 6px;background:transparent;border-color:transparent;color:var(--dim)">
+              </div>
+              <div style="font-size:22px;font-weight:500;color:var(--dim)" id="swapOutAmt">—</div>
+            </div>
+            <div style="margin-top:8px">
+              <span style="font-size:10px;color:var(--dim)" id="swapOutBal">Balance: —</span>
+            </div>
+          </div>
+
+          <!-- Slippage -->
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+            <span style="font-size:10px;color:var(--dim);flex:1">Slippage tolerance</span>
+            <button onclick="setSlip(this,'0.5')" class="slip-chip active">0.5%</button>
+            <button onclick="setSlip(this,'1')"   class="slip-chip">1%</button>
+            <button onclick="setSlip(this,'2')"   class="slip-chip">2%</button>
+          </div>
+
+          <!-- Quote preview -->
+          <div id="quoteBox" style="display:none;background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.1);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:11px">
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+              <span style="color:var(--dim)">Rate</span>
+              <span id="qRate" style="color:var(--text)">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+              <span style="color:var(--dim)">Estimated out</span>
+              <span id="qOut" style="color:var(--green);font-weight:500">—</span>
+            </div>
+            <div style="height:1px;background:var(--border);margin:6px 0"></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+              <span style="color:var(--dim)">XDEX fee</span>
+              <span style="color:var(--yellow)">0.28%</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+              <span style="color:var(--dim)">Network</span>
+              <span style="color:var(--dim)">X1 Mainnet</span>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn btn-primary" onclick="getQuote()" id="quoteBtn" style="padding:10px;font-size:12px">Get Quote</button>
+            <button class="btn btn-filled" onclick="execSwap()" id="swapBtn" disabled style="padding:10px;font-size:12px">Swap →</button>
+          </div>
+
         </div>
+
+        <!-- Help text -->
+        <div style="font-size:10px;color:var(--dim);line-height:1.7;padding:0 4px">
+          Enter token mint addresses from <a href="https://app.xdex.xyz" target="_blank">app.xdex.xyz</a>.
+          Click <strong style="color:var(--text)">Get Quote</strong> first to see the rate, then <strong style="color:var(--text)">Swap →</strong> to execute.
+        </div>
+
       </div>
     </div>
 
@@ -832,16 +914,27 @@ async function manualSnipe(mint) {
 
 async function getQuote() {
   const tokenIn = $('swapIn').value.trim(), tokenOut = $('swapOut').value.trim(), amount = $('swapAmt').value
-  if (!tokenIn||!tokenOut||!amount) { toast('Fill all fields', 'error'); return }
+  if (!tokenIn||!tokenOut||!amount) { toast('Fill all fields first', 'error'); return }
   try {
+    $('quoteBtn').disabled = true
+    $('quoteBtn').textContent = 'Fetching…'
     const r = await api('GET', `/quote?token_in=${tokenIn}&token_out=${tokenOut}&amount=${amount}`)
-    const out = r.quote?.amount_out ?? r.quote?.outAmount ?? r.quote?.data?.amount_out ?? '?'
+    // Use the pre-extracted amount_out field, fall back to searching quote object
+    const out = r.amount_out ??
+      r.quote?.amount_out ??
+      r.quote?.outAmount ??
+      r.quote?.out_amount ??
+      r.quote?.data?.amount_out ??
+      r.quote?.result?.amount_out
+    if (!out) { toast('Quote returned no price — check token addresses', 'error'); return }
     $('qOut').textContent  = parseFloat(out).toFixed(6)
     $('qRate').textContent = `1 → ${(parseFloat(out)/parseFloat(amount)).toFixed(6)}`
+    $('swapOutAmt').textContent = parseFloat(out).toFixed(4)
     $('quoteBox').style.display = 'block'
     $('swapBtn').disabled = false
     toast('Quote ready', 'success')
-  } catch(e) { toast('Quote failed: '+e.message, 'error') }
+  } catch(e) { toast('Quote failed: ' + e.message, 'error') }
+  finally { $('quoteBtn').disabled = false; $('quoteBtn').textContent = 'Get Quote' }
 }
 
 async function execSwap() {
@@ -856,10 +949,24 @@ async function execSwap() {
   finally { $('swapBtn').disabled = false }
 }
 
+function setSlip(el, val) {
+  document.querySelectorAll('.slip-chip').forEach(c => c.classList.remove('active'))
+  el.classList.add('active')
+}
+
+function setMax() {
+  if (botStatus?.wallet) {
+    // Use balance from status if available, otherwise just hint
+    toast('Set amount manually — balance shown in Backpack', 'info')
+  }
+}
+
 function flipSwap() {
   const a = $('swapIn').value, b = $('swapOut').value
   $('swapIn').value = b; $('swapOut').value = a
-  $('swapBtn').disabled = true; $('quoteBox').style.display = 'none'
+  $('swapBtn').disabled = true
+  $('quoteBox').style.display = 'none'
+  $('swapOutAmt').textContent = '—'
 }
 
 function saveBotUrl() {
