@@ -221,7 +221,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
       <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
       <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.7">
         Don't have a wallet?<br>
-        <a href="https://backpack.app" target="_blank">Backpack</a> · <a href="https://wallet.x1.xyz" target="_blank">X1 Wallet</a>
+        <a href="https://backpack.app" target="_blank">Backpack</a> · <a href="https://chromewebstore.google.com/detail/x1-wallet/kcfmcpdmlchhbikbogddmgopmjbflnae" target="_blank">X1 Wallet</a>
       </div>
     </div>
 
@@ -705,13 +705,17 @@ let activeWalletType = localStorage.getItem('walletType') || 'backpack'
 function getProvider(walletType) {
   const type = walletType || activeWalletType
   if (type === 'x1') {
+    // X1 Wallet (kcfmcpdmlchhbikbogddmgopmjbflnae) — Solana-compatible
+    // May inject as window.x1, window.solana, or window.x1wallet
     return window?.x1?.solana ||
-           window?.x1wallet?.solana ||
-           window?.x1Wallet?.solana ||
-           window?.xone?.solana ||
-           window?.xfi?.solana
+           window?.x1Wallet ||
+           window?.x1wallet ||
+           window?.solana   // fallback — X1 wallet may use standard solana injection
   }
-  return window?.backpack?.solana || window?.xnft?.solana || window?.solana
+  // Backpack
+  return window?.backpack?.solana ||
+         window?.xnft?.solana ||
+         window?.solana
 }
 
 async function connectWallet(walletType) {
@@ -725,7 +729,9 @@ async function connectWallet(walletType) {
     const provider = getProvider(walletType)
     if (!provider) {
       const name = walletType === 'x1' ? 'X1 Wallet' : 'Backpack'
-      const url  = walletType === 'x1' ? 'wallet.x1.xyz' : 'backpack.app'
+      const url  = walletType === 'x1'
+        ? 'chromewebstore.google.com/detail/x1-wallet/kcfmcpdmlchhbikbogddmgopmjbflnae'
+        : 'backpack.app'
       throw new Error(`${name} not found — install it from ${url}`)
     }
 
